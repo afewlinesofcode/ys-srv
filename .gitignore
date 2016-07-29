@@ -1,0 +1,14 @@
+/ys-srv
+*.o
+*.swp
+*.swo
+*.orig
+.ycm_extra_conf.py
+.ycm_extra_conf.pyc
+/.project
+/.cproject
+/.settings
+/libys_srv.so
+/libys_srv.a
+/test/*.test
+
