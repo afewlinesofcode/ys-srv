@@ -45,8 +45,8 @@ template<class Worker, class Buffer>
 void
 basic_worker<Worker, Buffer>::on_tcp_socket(boost::asio::ip::tcp::socket socket_)
 {
-    auto c = register_tcp_connection(
-                 std::make_shared<tcp_connection_type>(std::move(socket_)));
+    auto c = register_connection(
+                 std::make_shared<tcp_conn_type>(std::move(socket_)));
 
     c->read();
 }
@@ -58,10 +58,34 @@ template<class Worker, class Buffer>
 void
 basic_worker<Worker, Buffer>::on_shutdown()
 {
-    for (tcp_connection_ptr c: tcp_connections_)
+    for (tcp_conn_ptr c: tcp_connections_)
     {
-        unregister_tcp_connection(c);
+        unregister_connection(c);
     }
+}
+
+/*!
+ * Set handler for TCP connection registered signal.
+ * \param cb
+ */
+template<class Worker, class Buffer>
+void
+basic_worker<Worker, Buffer>::on_connection_registered(
+    typename on_tcp_conn_reg_type::slot_type const& cb)
+{
+    on_tcp_conn_reg_signal_.connect(cb);
+}
+
+/*!
+ * Set handler for TCP connection unregistered signal.
+ * \param cb
+ */
+template<class Worker, class Buffer>
+void
+basic_worker<Worker, Buffer>::on_connection_unregistered(
+    typename on_tcp_conn_unreg_type::slot_type const& cb)
+{
+    on_tcp_conn_unreg_signal_.connect(cb);
 }
 
 /*!
@@ -69,18 +93,14 @@ basic_worker<Worker, Buffer>::on_shutdown()
  * \param c Connection pointer.
  */
 template<class Worker, class Buffer>
-typename basic_worker<Worker, Buffer>::tcp_connection_ptr
-basic_worker<Worker, Buffer>::register_tcp_connection(tcp_connection_ptr c)
+typename basic_worker<Worker, Buffer>::tcp_conn_ptr
+basic_worker<Worker, Buffer>::register_connection(tcp_conn_ptr c)
 {
     using namespace boost::placeholders;
 
     tcp_connections_.insert(c);
 
-    c->on_read(boost::bind(&Worker::on_tcp_connection_read, &casted(),
-                           _1, _2));
-
-    c->on_error(boost::bind(&Worker::on_tcp_connection_error, &casted(),
-                            _1, _2));
+    on_tcp_conn_reg_signal_(this->shared_from_this(), c);
 
     return c;
 }
@@ -91,11 +111,13 @@ basic_worker<Worker, Buffer>::register_tcp_connection(tcp_connection_ptr c)
  */
 template<class Worker, class Buffer>
 void
-basic_worker<Worker, Buffer>::unregister_tcp_connection(tcp_connection_ptr c)
+basic_worker<Worker, Buffer>::unregister_connection(tcp_conn_ptr c)
 {
     c->close();
 
     tcp_connections_.erase(c);
+
+    on_tcp_conn_unreg_signal_(this->shared_from_this(), c);
 }
 
 } // namespace asio

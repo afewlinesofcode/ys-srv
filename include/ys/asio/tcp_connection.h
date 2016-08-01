@@ -34,13 +34,13 @@ public:
     /*!
      * A new data callback typedef.
      */
-    using on_read_cb_type =
+    using on_read_type =
         boost::signals2::signal<void (ptr, std::size_t)>;
 
     /*!
      * An error callback typedef.
      */
-    using on_error_cb_type =
+    using on_error_type =
         boost::signals2::signal<void (ptr, boost::system::error_code const&)>;
 
     /*!
@@ -101,14 +101,14 @@ public:
      * \param cb
      */
     void
-    on_read(typename on_read_cb_type::slot_type const& cb);
+    on_read(typename on_read_type::slot_type const& cb);
 
     /*!
      * Set a callback for error handling.
      * \param cb
      */
     void
-    on_error(typename on_error_cb_type::slot_type const& cb);
+    on_error(typename on_error_type::slot_type const& cb);
 
 private:
     /*!
@@ -124,12 +124,12 @@ private:
     /*!
      * A new data signal.
      */
-    on_read_cb_type on_read_;
+    on_read_type on_read_signal_;
 
     /*!
      * An error signal.
      */
-    on_error_cb_type on_error_;
+    on_error_type on_error_signal_;
 
     /*!
      * Asynchronously read from the socket.

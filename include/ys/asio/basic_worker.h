@@ -9,6 +9,9 @@
 #define YS_ASIO_BASIC_WORKER_H
 
 #include <set>
+#include <memory>
+#include <boost/signals2.hpp>
+
 #include <ys/asio/tcp_connection.h>
 
 namespace ys
@@ -21,8 +24,19 @@ namespace asio
  */
 template<class Worker, class Buffer>
 class basic_worker
+    : public std::enable_shared_from_this<basic_worker<Worker, Buffer>>
 {
 public:
+    /*!
+     * Worker target class typedef.
+     */
+    using worker_type = Worker;
+
+    /*!
+     * Worker pointer typedef.
+     */
+    using ptr = std::shared_ptr<basic_worker<Worker, Buffer>>;
+
     /*!
      * Connection buffer typedef.
      */
@@ -31,14 +45,26 @@ public:
     /*!
      * Connection typedef.
      */
-    using tcp_connection_type =
+    using tcp_conn_type =
         ys::asio::tcp_connection<buffer_type>;
 
     /*!
      * Connection pointer typedef.
      */
-    using tcp_connection_ptr =
-        std::shared_ptr<tcp_connection_type>;
+    using tcp_conn_ptr =
+        std::shared_ptr<tcp_conn_type>;
+
+    /*!
+     * Connection registered signal typedef.
+     */
+    using on_tcp_conn_reg_type =
+        boost::signals2::signal<void (ptr, tcp_conn_ptr)>;
+
+    /*!
+     * Connection unregistered signal typedef.
+     */
+    using on_tcp_conn_unreg_type =
+        boost::signals2::signal<void (ptr, tcp_conn_ptr)>;
 
     /*!
      * Get a reference to the correctly casted worker object.
@@ -67,26 +93,52 @@ public:
     void
     on_shutdown();
 
+    /*!
+     * Set handler for TCP connection registered signal.
+     * \param cb
+     */
+    void
+    on_connection_registered(
+        typename on_tcp_conn_reg_type::slot_type const& cb);
+
+    /*!
+     * Set handler for TCP connection unregistered signal.
+     * \param cb
+     */
+    void
+    on_connection_unregistered(
+        typename on_tcp_conn_unreg_type::slot_type const& cb);
+
 protected:
     /*!
      * Subscribe for the connection events and add it to the register.
      * \param c Connection pointer.
      */
-    tcp_connection_ptr
-    register_tcp_connection(tcp_connection_ptr c);
+    tcp_conn_ptr
+    register_connection(tcp_conn_ptr c);
 
     /*!
      * Unsubscribe from the connection events and remove it from the register.
      * \param c Connection pointer.
      */
     void
-    unregister_tcp_connection(tcp_connection_ptr c);
+    unregister_connection(tcp_conn_ptr c);
 
 private:
     /*!
      * A register with TCP connections.
      */
-    std::set<tcp_connection_ptr> tcp_connections_;
+    std::set<tcp_conn_ptr> tcp_connections_;
+
+    /*!
+     * Connection registered signal.
+     */
+    on_tcp_conn_reg_type on_tcp_conn_reg_signal_;
+
+    /*!
+     * Connection unregistered signal.
+     */
+    on_tcp_conn_unreg_type on_tcp_conn_unreg_signal_;
 
 }; // class basic_worker
 

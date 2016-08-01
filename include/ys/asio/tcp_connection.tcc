@@ -85,9 +85,9 @@ tcp_connection<Buffer>::buffer() const
  */
 template<typename Buffer>
 void
-tcp_connection<Buffer>::on_read(typename on_read_cb_type::slot_type const& cb)
+tcp_connection<Buffer>::on_read(typename on_read_type::slot_type const& cb)
 {
-    on_read_.connect(cb);
+    on_read_signal_.connect(cb);
 }
 
 /*!
@@ -96,9 +96,9 @@ tcp_connection<Buffer>::on_read(typename on_read_cb_type::slot_type const& cb)
  */
 template<typename Buffer>
 void
-tcp_connection<Buffer>::on_error(typename on_error_cb_type::slot_type const& cb)
+tcp_connection<Buffer>::on_error(typename on_error_type::slot_type const& cb)
 {
-    on_error_.connect(cb);
+    on_error_signal_.connect(cb);
 }
 
 /*!
@@ -115,16 +115,16 @@ tcp_connection<Buffer>::do_read()
         if (!ec)
         {
             /*
-             * No error. Triggering a new data signal.
+             * No error. Triggering new data signal.
              */
-            on_read_(this->shared_from_this(), bytes_transferred);
+            on_read_signal_(this->shared_from_this(), bytes_transferred);
         }
         else
         {
             /*
-             * Error! Triggering an error signal.
+             * Error! Triggering error signal.
              */
-            on_error_(this->shared_from_this(), ec);
+            on_error_signal_(this->shared_from_this(), ec);
         }
 
         /*

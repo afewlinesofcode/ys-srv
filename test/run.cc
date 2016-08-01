@@ -2,7 +2,7 @@
  * \file
  * \author Stanislav Yaranov <stanislav.yaranov@gmail.com>
  * \date   2016-07-29
- * \brief  Run simple echo server listening on localhost:12345 with two workers.
+ * \brief  Simple echo server listening on localhost:12345 with two workers.
  */
 
 #include <array>
@@ -12,13 +12,64 @@
 #include <ys/asio/basic_worker.h>
 #include <ys/logger.h>
 
+using buffer_type = std::array<char, 1024>;
+
 /*!
  * A worker class.
  */
 class worker
-    : public ys::asio::basic_worker<worker, std::array<char, 1024>>
+    : public ys::asio::basic_worker<worker, buffer_type>
 {
 public:
+    /*!
+     * \brief Constructor.
+     * \details Initialize handlers for connection events.
+     */
+    worker() :
+        on_tcp_conn_read_
+        (
+            boost::bind(&worker::on_conn_read, this, _1, _2)
+        ),
+        on_tcp_conn_error_
+        (
+            boost::bind(&worker::on_conn_error, this, _1, _2)
+        )
+    {
+        on_connection_registered(boost::bind(
+                                     &worker::on_conn_reg,
+                                     this,
+                                     _1, _2));
+
+        on_connection_unregistered(boost::bind(
+                                       &worker::on_conn_unreg,
+                                       this,
+                                       _1, _2));
+    }
+
+    /*!
+     * Handler called after a new connection was registered.
+     * \param w Worker holding connection.
+     * \param c The connection.
+     */
+    void
+    on_conn_reg(ptr w, tcp_conn_ptr c)
+    {
+        using namespace boost::placeholders;
+
+        c->on_read(on_tcp_conn_read_);
+        c->on_error(on_tcp_conn_error_);
+    }
+
+    /*!
+     * Handler called after a connection was unregistered.
+     * \param w Worker holding connection.
+     * \param c The connection.
+     */
+    void
+    on_conn_unreg(ptr w, tcp_conn_ptr c)
+    {
+    }
+
     /*!
      * Process data arrived on connection.
      * Write received data back to the connection.
@@ -26,7 +77,7 @@ public:
      * \param s Size of the arrived data.
      */
     void
-    on_tcp_connection_read(tcp_connection_ptr c, std::size_t s)
+    on_conn_read(tcp_conn_ptr c, std::size_t s)
     {
         char const* data = c->buffer().data();
         std::vector<char> vec { data, data + s };
@@ -52,8 +103,8 @@ public:
      * \param ec The error code.
      */
     void
-    on_tcp_connection_error(tcp_connection_ptr c,
-                            boost::system::error_code const& ec)
+    on_conn_error(tcp_conn_ptr c,
+                  boost::system::error_code const& ec)
     {
         YS_LOG(error) << "connection error: "
                       << ec << " [" << ec.message() << "]";
@@ -61,8 +112,19 @@ public:
         /*
          * Unregister connection on any error.
          */
-        unregister_tcp_connection(c);
+        unregister_connection(c);
     }
+
+private:
+    /*!
+     * Handler for TCP connection data event.
+     */
+    tcp_conn_type::on_read_type::slot_type on_tcp_conn_read_;
+
+    /*!
+     * Handler for TCP connection error event.
+     */
+    tcp_conn_type::on_error_type::slot_type on_tcp_conn_error_;
 };
 
 /*!
