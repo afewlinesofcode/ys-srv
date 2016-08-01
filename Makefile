@@ -20,7 +20,6 @@ TARGET_SO = $(TARGET).so
 
 TARGET_A = $(TARGET).a
 
-
 TEST_FLAGS = -O2 -g -Wall -fmessage-length=0 -Iinclude -std=c++14
 
 TEST_SRCS = $(shell find test/ -type f -name *.cc)
@@ -38,6 +37,11 @@ $(TARGET_SO): $(OBJS)
 
 $(TARGET_A): $(OBJS)
 	$(AR) rvs $(TARGET_A) $(OBJS)
+
+install: all
+	cp -rv ./include/* /usr/local/include
+	cp -v $(TARGET_A) /usr/local/lib/
+	cp -v $(TARGET_SO) /usr/local/lib/
 
 clean:
 	rm -f $(OBJS) $(TARGET_SO) $(TARGET_A)
