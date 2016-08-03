@@ -98,6 +98,11 @@ basic_worker<Worker, Buffer>::register_connection(tcp_conn_ptr c)
 {
     using namespace boost::placeholders;
 
+    if (tcp_connections_.count(c))
+    {
+        return c;
+    }
+
     tcp_connections_.insert(c);
 
     on_tcp_conn_reg_signal_(this->shared_from_this(), c);
@@ -113,9 +118,14 @@ template<class Worker, class Buffer>
 void
 basic_worker<Worker, Buffer>::unregister_connection(tcp_conn_ptr c)
 {
-    c->close();
+    if (!tcp_connections_.count(c))
+    {
+        return;
+    }
 
     tcp_connections_.erase(c);
+
+    c->close();
 
     on_tcp_conn_unreg_signal_(this->shared_from_this(), c);
 }

@@ -26,6 +26,10 @@ TEST_SRCS = $(shell find test/ -type f -name *.cc)
 
 TEST_LIBS =
 
+TEST_LDFLAGS =
+
+TEST_LDLIBS = -Wl,-Bstatic -lys_util -Wl,-Bdynamic -lpthread -lboost_system -lboost_log
+
 TESTS = $(TEST_SRCS:.cc=.test)
 
 CHECKS = $(TESTS:.test=.check)
@@ -38,18 +42,26 @@ $(TARGET_SO): $(OBJS)
 $(TARGET_A): $(OBJS)
 	$(AR) rvs $(TARGET_A) $(OBJS)
 
-install: all
-	cp -rv ./include/* /usr/local/include
-	cp -v $(TARGET_A) /usr/local/lib/
-	cp -v $(TARGET_SO) /usr/local/lib/
-
 clean:
 	rm -f $(OBJS) $(TARGET_SO) $(TARGET_A)
 
+install: all
+	cd include && \
+		find . -type f \( -name *.h -o -name *.tcc \) \
+			-exec install -v -DT -m 0644 {} /usr/local/include/{} \;
+	install -v -t /usr/local/lib/ $(TARGET_A) $(TARGET_SO)
+
+uninstall:
+	cd include && \
+		find . -type f \( -name *.h -o -name *.tcc \) \
+			-exec rm -fv /usr/local/include/{} \;
+	cd /usr/local/lib && \
+		rm -fv $(TARGET_A) $(TARGET_SO)
+
 test: $(TESTS)
 
-%.test: %.cc $(TARGET_A)
-	    $(CXX) -o $@ $(TEST_FLAGS) $(LDFLAGS) $(LDLIBS) $^
+%.test: %.cc
+	    $(CXX) $< -o $@ $(TEST_FLAGS) $(TEST_LDFLAGS) $(TEST_LDLIBS) $(TEST_LIBS) $(TARGET_A)
 
 %.check: %.test
 	    $<

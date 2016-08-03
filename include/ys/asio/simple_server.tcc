@@ -30,7 +30,13 @@ simple_server<Worker>::simple_server(options const& opts) :
     io_service_ { },
     main_service_ { },
     signals_ { main_service_ },
-    tcp_acceptor_ { io_service_ }, tcp_socket_ { io_service_ }
+    tcp_sockets_
+    {
+        [this]()
+        {
+            return std::make_shared<boost::asio::ip::tcp::socket>(io_service_);
+        }
+    }
 {
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
@@ -59,12 +65,17 @@ simple_server<Worker>::tcp(std::string const& address, std::string const& port)
 
     tcp::endpoint endpoint_ = *resolver_.resolve( { address, port });
 
-    tcp_acceptor_.open(endpoint_.protocol());
-    tcp_acceptor_.set_option(tcp::acceptor::reuse_address { true });
-    tcp_acceptor_.bind(endpoint_);
-    tcp_acceptor_.listen();
+    auto acceptor =
+        std::make_shared<tcp_acceptor_ptr::element_type>(io_service_);
 
-    await_tcp_accept();
+    acceptor->open(endpoint_.protocol());
+    acceptor->set_option(tcp::acceptor::reuse_address { true });
+    acceptor->bind(endpoint_);
+    acceptor->listen();
+
+    tcp_acceptors_.insert(acceptor);
+
+    await_tcp_accept(acceptor);
 }
 
 /*!
@@ -152,25 +163,45 @@ simple_server<Worker>::run()
 
 /*!
  * Wait asynchronously for the next tcp connection and accept it.
+ * \param tap A pointer to the acceptor.
  */
 template<class Worker>
 void
-simple_server<Worker>::await_tcp_accept()
+simple_server<Worker>::await_tcp_accept(tcp_acceptor_ptr tap)
 {
-    tcp_acceptor_.async_accept(tcp_socket_,
-                               [this](boost::system::error_code const& ec)
+    /*!
+     * Socket resource for accepted connection.
+     */
+    auto sr = tcp_sockets_.take(); 
+
+    tap->async_accept(*sr,
+                    [this, tap, sr](boost::system::error_code const& ec)
     {
+        /*!
+         * Temporary socket for handling accepted connection in current scope.
+         */
+        boost::asio::ip::tcp::socket s { std::move(*sr) };
+
+        /*!
+         * Return socket resource back to the set.
+         */
+        tcp_sockets_.put(sr);
+
+        /*
+         * Handling.
+         */
+
         if (!ec)
         {
             /*
              * No error. Pass the accepted socket to a worker.
              */
-            get_worker()->on_tcp_socket(std::move(tcp_socket_));
+            get_worker()->on_tcp_socket(std::move(s));
 
             /*
              * Continue.
              */
-            await_tcp_accept();
+            await_tcp_accept(tap);
         }
         else
         {

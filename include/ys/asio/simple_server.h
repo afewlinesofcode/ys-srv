@@ -9,8 +9,10 @@
 #define YS_ASIO_SIMPLE_SERVER_H
 
 #include <map>
+#include <set>
 #include <thread>
 #include <boost/asio.hpp>
+#include <ys/rsrc_set_mt.h>
 
 namespace ys
 {
@@ -94,6 +96,11 @@ public:
 
 private:
     /*!
+     * TCP connection acceptor pointer typedef.
+     */
+    using tcp_acceptor_ptr = std::shared_ptr<boost::asio::ip::tcp::acceptor>;
+
+    /*!
      * IO service for processing connections.
      */
     boost::asio::io_service io_service_;
@@ -109,14 +116,14 @@ private:
     boost::asio::signal_set signals_;
 
     /*!
-     * TCP connections acceptor.
+     * A set of TCP connection acceptors.
      */
-    boost::asio::ip::tcp::acceptor tcp_acceptor_;
+    std::set<tcp_acceptor_ptr> tcp_acceptors_;
 
     /*!
-     * TCP socket of the last accepted connection.
+     * Concurrent set of TCP sockets used by TCP acceptors.
      */
-    boost::asio::ip::tcp::socket tcp_socket_;
+    ys::rsrc_set_mt<boost::asio::ip::tcp::socket> tcp_sockets_;
 
     /*!
      * A set of processing workers.
@@ -125,9 +132,10 @@ private:
 
     /*!
      * Wait asynchronously for the next tcp connection and accept it.
+     * \param tap A pointer to the acceptor.
      */
     void
-    await_tcp_accept();
+    await_tcp_accept(tcp_acceptor_ptr tap);
 
     /*!
      * Wait for the shutdown signal.
