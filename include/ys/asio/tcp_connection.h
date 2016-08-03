@@ -144,3 +144,4 @@ private:
 #include "tcp_connection.tcc"
 
 #endif /* YS_ASIO_TCP_CONNECTION_H */
+

@@ -5,6 +5,9 @@
  * \brief  ys::asio base error class header file.
  */
 
+#ifndef YS_ASIO_ERROR_H
+#define YS_ASIO_ERROR_H
+
 #include <stdexcept>
 
 namespace ys
@@ -30,3 +33,6 @@ public:
 
 } // namespace asio
 } // namespace ys
+
+#endif // YS_ASIO_ERROR_H
+

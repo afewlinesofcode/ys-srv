@@ -255,7 +255,7 @@ simple_server<Worker>::get_worker() const
 
     if (it == workers_.end())
     {
-        throw new std::runtime_error("No suitable worker found");
+        throw error("No suitable worker found");
     }
 
     return it->second;
