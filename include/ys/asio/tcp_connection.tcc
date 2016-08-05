@@ -50,12 +50,12 @@ tcp_connection<Buffer>::read()
  * Write to the connection.
  */
 template<typename Buffer>
-template<typename ConstBufferSequence, typename WriteHandler>
+template<typename WriteBuffer, typename WriteHandler>
 void
-tcp_connection<Buffer>::write(ConstBufferSequence const& buffer,
+tcp_connection<Buffer>::write(WriteBuffer const& buffer,
                               WriteHandler const& handler)
 {
-    socket_.async_send(buffer, handler);
+    socket_.async_send(boost::asio::buffer(buffer), handler);
 }
 
 /*!
@@ -76,7 +76,18 @@ template<typename Buffer>
 typename tcp_connection<Buffer>::buffer_type const&
 tcp_connection<Buffer>::buffer() const
 {
-    return read_buffer_;
+    return data_buffer_;
+}
+
+/*!
+ * Get a const reference to the underlying boost socket.
+ * \return
+ */
+template<typename Buffer>
+boost::asio::ip::tcp::socket const&
+tcp_connection<Buffer>::socket()
+{
+    return socket_;
 }
 
 /*!
@@ -85,9 +96,9 @@ tcp_connection<Buffer>::buffer() const
  */
 template<typename Buffer>
 void
-tcp_connection<Buffer>::on_read(typename on_read_type::slot_type const& cb)
+tcp_connection<Buffer>::on_data(typename on_data_type::slot_type const& cb)
 {
-    on_read_signal_.connect(cb);
+    on_data_signal_.connect(cb);
 }
 
 /*!
@@ -108,7 +119,7 @@ template<typename Buffer>
 void
 tcp_connection<Buffer>::do_read()
 {
-    socket_.async_read_some(boost::asio::buffer(read_buffer_),
+    socket_.async_read_some(boost::asio::buffer(data_buffer_),
                             [this](boost::system::error_code const& ec,
                                    std::size_t bytes_transferred)
     {
@@ -117,7 +128,7 @@ tcp_connection<Buffer>::do_read()
             /*
              * No error. Triggering new data signal.
              */
-            on_read_signal_(this->shared_from_this(), bytes_transferred);
+            on_data_signal_(this->shared_from_this(), bytes_transferred);
         }
         else
         {

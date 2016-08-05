@@ -34,7 +34,7 @@ public:
     /*!
      * A new data callback typedef.
      */
-    using on_read_type =
+    using on_data_type =
         boost::signals2::signal<void (ptr, std::size_t)>;
 
     /*!
@@ -79,9 +79,9 @@ public:
     /*!
      * Write to the connection.
      */
-    template<typename ConstBufferSequence, typename WriteHandler>
+    template<typename WriteBuffer, typename WriteHandler>
     void
-    write(ConstBufferSequence const& buffer, WriteHandler const& handler);
+    write(WriteBuffer const& buffer, WriteHandler const& handler);
 
     /*!
      * Close the connection.
@@ -97,11 +97,18 @@ public:
     buffer() const;
 
     /*!
+     * Get a const reference to the underlying boost socket.
+     * \return
+     */
+    boost::asio::ip::tcp::socket const&
+    socket();
+
+    /*!
      * Set a callback for new data processing.
      * \param cb
      */
     void
-    on_read(typename on_read_type::slot_type const& cb);
+    on_data(typename on_data_type::slot_type const& cb);
 
     /*!
      * Set a callback for error handling.
@@ -117,14 +124,14 @@ private:
     boost::asio::ip::tcp::socket socket_;
 
     /*!
-     * A buffer with the data been read.
+     * A buffer with data.
      */
-    buffer_type read_buffer_;
+    buffer_type data_buffer_;
 
     /*!
      * A new data signal.
      */
-    on_read_type on_read_signal_;
+    on_data_type on_data_signal_;
 
     /*!
      * An error signal.

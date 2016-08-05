@@ -26,9 +26,9 @@ public:
      * \details Initialize handlers for connection events.
      */
     worker() :
-        on_tcp_conn_read_
+        on_tcp_conn_data_
         (
-            boost::bind(&worker::on_conn_read, this, _1, _2)
+            boost::bind(&worker::on_conn_data, this, _1, _2)
         ),
         on_tcp_conn_error_
         (
@@ -56,7 +56,7 @@ public:
     {
         using namespace boost::placeholders;
 
-        c->on_read(on_tcp_conn_read_);
+        c->on_data(on_tcp_conn_data_);
         c->on_error(on_tcp_conn_error_);
     }
 
@@ -74,16 +74,16 @@ public:
      * Process data arrived on connection.
      * Write received data back to the connection.
      * \param c The connection pointer.
-     * \param s Size of the arrived data.
+     * \param n Number of arrived bytes.
      */
     void
-    on_conn_read(tcp_conn_ptr c, std::size_t s)
+    on_conn_data(tcp_conn_ptr c, std::size_t n)
     {
         char const* data = c->buffer().data();
-        std::vector<char> vec { data, data + s };
+        std::vector<char> vec { data, data + n };
 
         c->write(
-            boost::asio::buffer(vec),
+            vec,
             [](boost::system::error_code const& ec, std::size_t s)
         {
             if (!ec)
@@ -119,7 +119,7 @@ private:
     /*!
      * Handler for TCP connection data event.
      */
-    tcp_conn_type::on_read_type::slot_type on_tcp_conn_read_;
+    tcp_conn_type::on_data_type::slot_type on_tcp_conn_data_;
 
     /*!
      * Handler for TCP connection error event.
