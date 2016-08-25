@@ -33,6 +33,11 @@ public:
     using worker_type = Worker;
 
     /*!
+     * Basic worker class typedef.
+     */
+    using basic_worker_type = basic_worker<Worker, Buffer>;
+
+    /*!
      * Worker pointer typedef.
      */
     using ptr = std::shared_ptr<basic_worker<Worker, Buffer>>;
