@@ -85,7 +85,7 @@ tcp_connection<Buffer>::buffer() const
  */
 template<typename Buffer>
 boost::asio::ip::tcp::socket const&
-tcp_connection<Buffer>::socket()
+tcp_connection<Buffer>::socket() const
 {
     return socket_;
 }

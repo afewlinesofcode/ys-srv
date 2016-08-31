@@ -101,7 +101,7 @@ public:
      * \return
      */
     boost::asio::ip::tcp::socket const&
-    socket();
+    socket() const;
 
     /*!
      * Set a callback for new data processing.

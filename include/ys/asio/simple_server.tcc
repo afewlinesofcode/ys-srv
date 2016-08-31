@@ -23,9 +23,11 @@ namespace asio
 /*!
  * Constructor.
  * \param opts Server options.
+ * \param init Worker initialization function.
  */
 template<class Worker>
-simple_server<Worker>::simple_server(options const& opts) :
+simple_server<Worker>::simple_server(options const& opts,
+                                     worker_initializer_type init) :
     opts { opts },
     io_service_ { },
     main_service_ { },
@@ -36,7 +38,8 @@ simple_server<Worker>::simple_server(options const& opts) :
         {
             return std::make_shared<boost::asio::ip::tcp::socket>(io_service_);
         }
-    }
+    },
+    worker_initializer_ { init }
 {
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
@@ -61,10 +64,23 @@ simple_server<Worker>::tcp(std::string const& address, std::string const& port)
 {
     using namespace boost::asio::ip;
 
+    /*
+     * 1. Do the preparations for accepting connections on specified address.
+     */
+
+    /*!
+     * Endpoint resolver.
+     */
     tcp::resolver resolver_ { io_service_ };
 
+    /*!
+     * Resolved endpoint.
+     */
     tcp::endpoint endpoint_ = *resolver_.resolve( { address, port });
 
+    /*!
+     * Acceptor for incoming TCP connections.
+     */
     auto acceptor =
         std::make_shared<tcp_acceptor_ptr::element_type>(io_service_);
 
@@ -73,7 +89,14 @@ simple_server<Worker>::tcp(std::string const& address, std::string const& port)
     acceptor->bind(endpoint_);
     acceptor->listen();
 
+    /*
+     * Store the acceptor in the acceptors container.
+     */
     tcp_acceptors_.insert(acceptor);
+
+    /*
+     * 2. Start accepting.
+     */
 
     await_tcp_accept(acceptor);
 }
@@ -112,7 +135,7 @@ simple_server<Worker>::run()
                 {
                     /*
                      * Create a worker object with a mapping between
-                     * current running thread and the worker.
+                     * current running thread and the worker pointer.
                      */
                     {
                         std::lock_guard<std::mutex> lock(m);
@@ -120,7 +143,7 @@ simple_server<Worker>::run()
                         workers_.insert(
                         {
                             std::this_thread::get_id(),
-                            std::make_shared<Worker>()
+                            std::shared_ptr<Worker>(worker_initializer_())
                         });
                     }
 
@@ -172,10 +195,10 @@ simple_server<Worker>::await_tcp_accept(tcp_acceptor_ptr tap)
     /*!
      * Socket resource for accepted connection.
      */
-    auto sr = tcp_sockets_.take(); 
+    auto sr = tcp_sockets_.take();
 
     tap->async_accept(*sr,
-                    [this, tap, sr](boost::system::error_code const& ec)
+                      [this, tap, sr](boost::system::error_code const& ec)
     {
         /*!
          * Temporary socket for handling accepted connection in current scope.

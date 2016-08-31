@@ -140,7 +140,10 @@ main(int argc, char* argv[])
     /*
      * Create server object with two workers.
      */
-    ys::asio::simple_server<worker> srv({ 2 });
+    ys::asio::simple_server<worker> srv({ 2 }, []()
+    {
+        return new worker();
+    });
 
     /*
      * Set address `127.0.0.1:12345` for listening.

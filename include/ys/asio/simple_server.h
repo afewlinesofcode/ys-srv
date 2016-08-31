@@ -56,6 +56,11 @@ public:
     using worker_ptr = std::shared_ptr<Worker>;
 
     /*!
+     * A worker initializer typedef.
+     */
+    using worker_initializer_type = std::function<Worker* ()>;
+
+    /*!
      * Server opts.
      */
     const options opts;
@@ -63,8 +68,9 @@ public:
     /*!
      * Constructor.
      * \param opts Server options.
+     * \param init Worker initialization function.
      */
-    simple_server(options const& opts);
+    simple_server(options const& opts, worker_initializer_type init);
 
     /*!
      * Copy operation is prohibited.
@@ -124,6 +130,11 @@ private:
      * Concurrent set of TCP sockets used by TCP acceptors.
      */
     ys::rsrc_set_mt<boost::asio::ip::tcp::socket> tcp_sockets_;
+
+    /*!
+     * A new worker initializer.
+     */
+    worker_initializer_type worker_initializer_;
 
     /*!
      * A set of processing workers.
